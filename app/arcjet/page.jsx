@@ -6,6 +6,7 @@ import { protectedAction } from "./actions";
 export default function ArcjetPage() {
   const [message, setMessage] = useState("");
   const [count, setCount] = useState(0);
+  
 
   async function handleClick() {
     const result = await protectedAction();

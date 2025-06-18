@@ -9,7 +9,6 @@ export default function Home() {
   const [answer, setAnswer] = useState('');
   const [receiptInfo, setReceiptInfo] = useState(null);
   const [loading, setLoading] = useState(false);
-
   const handleQuestionSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -35,9 +34,11 @@ export default function Home() {
     setLoading(false);
   };
 
+
   return (
     <main style={{ padding: 20, fontFamily: 'sans-serif', maxWidth: 600, margin: '0 auto' }}>
       <h1>Smart Assistant</h1>
+   
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         <button onClick={() => setTab('question')}>Ask Question</button>
         <button onClick={() => setTab('receipt')}>Upload Receipt</button>

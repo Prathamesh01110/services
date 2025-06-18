@@ -3,9 +3,8 @@
 import{genAI} from '@/lib/gemini'
 
 export async function generateAnswer(question) {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  const prompt = 'just answer in short as possible like in 2 line only'
-  const result = await model.generateContent(question,prompt);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });//model selection
+  const result = await model.generateContent(question);//response from gemini (api call using api key)
   console.log(result);
   
   const response = await result.response;
@@ -13,11 +12,16 @@ export async function generateAnswer(question) {
 }
 
 export async function scanReceipt(file) {
+  // .png format
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await file.arrayBuffer();//this convertst the imaging in array
+    console.log(arrayBuffer)    
     const base64String = Buffer.from(arrayBuffer).toString("base64");
+    console.log(base64String);
+    
+
 
     const prompt = `
       Analyze this receipt image and extract the following information in JSON format:
@@ -52,6 +56,7 @@ export async function scanReceipt(file) {
     const response = await result.response;
     const text = response.text();
     const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+    console.log(cleanedText);
 
     try {
       const data = JSON.parse(cleanedText);
