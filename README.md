@@ -1,36 +1,212 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Services Integration Guide
 
-## Getting Started
+This guide covers the integration of essential services: Prisma (database ORM), Arcjet (rate limiting), Gemini AI, and Resend (email service).
 
-First, run the development server:
+## Table of Contents
+- [Prisma Database Setup](#prisma-database-setup)
+- [Resend Email Service](#resend-email-service)
+- [Gemini AI Integration](#gemini-ai-integration)
+- [Arcjet Rate Limiting](#arcjet-rate-limiting)
+- [Environment Variables](#environment-variables)
 
+## Prisma Database Setup
+
+### Installation & Initialization
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npx prisma init
+npx prisma db push --force-reset
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Configuration (`lib/prisma.js`)
+```javascript
+import { PrismaClient } from '@prisma/client'
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+export const prisma = globalThis.prisma || new PrismaClient();
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+if (process.env.NODE_ENV !== "production") {
+    globalThis.prisma = prisma;
+}
+```
 
-## Learn More
+**What this does:** Creates a singleton Prisma client instance that reuses the same connection in development to avoid connection pool exhaustion.
 
-To learn more about Next.js, take a look at the following resources:
+### Basic Usage
+```javascript
+// Create a record
+await prisma.user.create({
+    data: { name: "John", email: "john@example.com" }
+});
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+// Find many records
+await prisma.user.findMany({
+    where: { active: true }
+});
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+// Find unique record
+await prisma.user.findUnique({
+    where: { id: 1 }
+});
 
-## Deploy on Vercel
+// Update record
+await prisma.user.update({
+    where: { id: 1 },
+    data: { name: "Jane" }
+});
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+// Delete record
+await prisma.user.delete({
+    where: { id: 1 }
+});
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Resend Email Service
+
+### Installation
+```bash
+npm install resend @react-email/components
+```
+
+### Package.json Scripts
+Add this to your `package.json`:
+```json
+{
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build", 
+    "start": "next start",
+    "lint": "next lint",
+    "email": "email dev"
+  }
+}
+```
+
+### Configuration (`lib/resend.js`)
+```javascript
+import { Resend } from "resend";
+
+export const resend = new Resend(process.env.RESEND_API_KEY || "");
+```
+
+**What this does:** Initializes the Resend SDK with your API key for sending transactional emails.
+
+### Usage Example
+```javascript
+const data = await resend.emails.send({
+    from: 'gemini <onboarding@resend.dev>',
+    to: "user@example.com",
+    subject: "Users Data",
+    react: EmailTemplate(),
+});
+```
+
+## Gemini AI Integration
+
+### Installation
+```bash
+npm install @google/generative-ai
+```
+
+### Configuration (`lib/gemini.js`)
+```javascript
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+```
+
+**What this does:** Creates a GoogleGenerativeAI client instance using your API key to access Gemini models.
+
+### Usage Example
+```javascript
+import { genAI } from '@/lib/gemini'
+
+export async function generateAnswer(question) {
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const result = await model.generateContent(question);
+  console.log(result);
+  
+  const response = await result.response;
+  return response.text();
+}
+```
+
+## Arcjet Rate Limiting
+
+### Installation
+```bash
+npm i @arcjet/next @arcjet/inspect
+```
+
+### Configuration (`lib/arcjet.js`)
+```javascript
+import arcjet, { tokenBucket } from "@arcjet/next";
+
+const aj = arcjet({
+  key: process.env.ARCJET_KEY,
+  rules: [
+    tokenBucket({
+      mode: "LIVE", // Change to "DRY_RUN" for testing
+      refillRate: 10,    // 10 tokens per minute
+      interval: 60,      // 60 seconds
+      capacity: 10,      // Max 10 requests
+    }),
+  ],
+});
+
+export default aj;
+```
+
+**What this does:** Sets up rate limiting with a token bucket algorithm - allows 10 requests initially, then refills at 10 tokens per minute.
+
+### Protected Action Example
+```javascript
+"use server";
+import aj from "@/lib/arcjet";
+
+export async function protectedAction() {
+  try {
+    const decision = await aj.protect({}, { requested: 1 });
+    if (decision.isDenied()) return { error: "Rate limit exceeded" };
+    return { message: "Request allowed" };
+  } catch {
+    return { error: "Error occurred" };
+  }
+}
+```
+
+## Environment Variables
+
+Create a `.env` file in your project root:
+
+```env
+# Database
+DATABASE_URL="your_database_connection_string"
+
+# Resend
+RESEND_API_KEY="your_resend_api_key"
+
+# Gemini AI
+GEMINI_API_KEY="your_gemini_api_key"
+
+# Arcjet
+ARCJET_KEY="your_arcjet_key"
+
+# Environment
+NODE_ENV="development"
+```
+
+## Key Concepts
+
+### Library Pattern
+Each service follows the same pattern:
+1. **Import SDK** - Import the service's official SDK
+2. **Initialize Client** - Create a client instance with API key
+3. **Export Instance** - Export for use across your application
+4. **Environment Handling** - Use environment variables for API keys
+
+### Usage Pattern
+- **Prisma**: `prisma.tableName.operation()`
+- **Resend**: `resend.emails.send()`
+- **Gemini**: `genAI.getGenerativeModel().generateContent()`
+- **Arcjet**: `aj.protect()`
+
+Each lib file essentially assigns the SDK to a variable with your API key, making it ready to use throughout your application.
