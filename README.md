@@ -1,13 +1,19 @@
 # Services Integration Guide
 
+> ✅ **Clerk Integration:** Use [Clerk’s official Next.js Quickstart](https://clerk.com/docs/quickstarts/nextjs) for authentication setup.
+> 🔒 **Route Protection:** To protect routes, refer to [Clerk Middleware Documentation](https://clerk.com/docs/references/nextjs/clerk-middleware#create-route-matcher).
+
 This guide covers the integration of essential services: Prisma (database ORM), Arcjet (rate limiting), Gemini AI, and Resend (email service).
 
 ## Table of Contents
-- [Prisma Database Setup](#prisma-database-setup)
-- [Resend Email Service](#resend-email-service)
-- [Gemini AI Integration](#gemini-ai-integration)
-- [Arcjet Rate Limiting](#arcjet-rate-limiting)
-- [Environment Variables](#environment-variables)
+
+* [Prisma Database Setup](#prisma-database-setup)
+* [Resend Email Service](#resend-email-service)
+* [Gemini AI Integration](#gemini-ai-integration)
+* [Arcjet Rate Limiting](#arcjet-rate-limiting)
+* [Environment Variables](#environment-variables)
+
+---
 
 ## Prisma Database Setup
 
